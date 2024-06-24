@@ -1,8 +1,8 @@
 Development files for Snowflake Managed Analytics.
 
-# Environment
+**Environment**
 name: app_environment
 channels:
-  - snowflake
+- snowflake
 dependencies:
-  - plotly=5.19.0
+- plotly=5.19.0
