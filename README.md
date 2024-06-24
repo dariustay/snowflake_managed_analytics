@@ -1,0 +1,1 @@
+# snowflake_managed_analytics
