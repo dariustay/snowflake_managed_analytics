@@ -256,13 +256,13 @@ fig_daily_cost.update_layout(
 if quoted_selected_acc and quoted_selected_service:
     monthly_cost_query = '''
         SELECT 
-            MONTH(USAGE_DATE) AS USAGE_MONTH,
+            TO_CHAR(USAGE_DATE, 'YYYY-MM') AS USAGE_MONTH,
             SUM(USAGE_IN_CURRENCY) AS TOTAL_COST_USD
         FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
         WHERE ACCOUNT_NAME IN ({})
         AND SERVICE_TYPE IN ({})
         AND USAGE_DATE BETWEEN '{}' AND '{}'
-        GROUP BY USAGE_MONTH
+        GROUP BY TO_CHAR(USAGE_DATE, 'YYYY-MM')
         ORDER BY USAGE_MONTH ASC
     '''.format(
         ', '.join(quoted_selected_acc),
@@ -273,11 +273,11 @@ if quoted_selected_acc and quoted_selected_service:
 else:
     monthly_cost_query = '''
         SELECT 
-            MONTH(USAGE_DATE) AS USAGE_MONTH,
+           TO_CHAR(USAGE_DATE, 'YYYY-MM') AS USAGE_MONTH,
             0 AS TOTAL_COST_USD
         FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
         WHERE USAGE_DATE BETWEEN '{}' AND '{}'
-        GROUP BY USAGE_MONTH
+        GROUP BY TO_CHAR(USAGE_DATE, 'YYYY-MM')
         ORDER BY USAGE_MONTH ASC
     '''.format(
         start_date_str,
@@ -295,7 +295,7 @@ fig_monthly_cost = px.bar(df_monthly_cost, x = 'USAGE_MONTH', y = 'TOTAL_COST_US
 fig_monthly_cost.update_layout(
     xaxis_title = '',
     yaxis_title = '',
-    xaxis_tickformat = '%Y-%m-%d',
+    xaxis_tickformat = '%Y-%m',
     bargap = 0.2,
     width = 800,
     height = 400,
