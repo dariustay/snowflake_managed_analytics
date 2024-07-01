@@ -68,6 +68,7 @@ with filter3:
 ##### 2. Overall Cost #####
 
 st.divider()
+st.write("\n")
 st.subheader('Overall Cost')
 
 # Quote each account name
@@ -127,36 +128,66 @@ formatted_avg_cost_usd = "${:,.2f}".format(avg_cost_usd)
 avg_cost_credits = df_cost['AVG_COST_CREDITS'].iloc[0]
 formatted_avg_cost_credits = "{:,.2f}".format(avg_cost_credits)
 
+# Remaining credits query (Note: Using FREE_USAGE_BALANCE instead of CAPACITY_BALANCE)
+remaining_credits_query = '''
+    SELECT 
+        DATE, 
+        FREE_USAGE_BALANCE
+    FROM SNOWFLAKE.ORGANIZATION_USAGE.REMAINING_BALANCE_DAILY
+    ORDER BY DATE DESC
+    LIMIT 1;
+'''
+
+# Convert to DataFrame
+df_remaining_credits = session.sql(remaining_credits_query).to_pandas()
+
+# Extract remaining credits (USD)
+remaining_credits_usd = df_remaining_credits['FREE_USAGE_BALANCE'].iloc[0]
+formatted_remaining_credits_usd = "${:,.2f}".format(remaining_credits_usd)
+
+# Create tabs
+overall_cost_tab1, overall_cost_tab2 = st.tabs(["Cost", "Remaining Credits"])
+
 # Create overall cost visual
-cost1, cost2, cost3, cost4 = st.columns(4)
-
-## Total cost in USD
-with cost1:
-    st.metric(
-        label = 'Total Cost in USD:',
-        value = formatted_total_cost_usd
-    )
+with overall_cost_tab1:
+    cost1, cost2, cost3, cost4 = st.columns(4)
     
-## Total cost in credits
-with cost2:
+    ## Total cost in USD
+    with cost1:
+        st.metric(
+            label = 'Total Cost in USD:',
+            value = formatted_total_cost_usd
+        )
+        
+    ## Total cost in credits
+    with cost2:
+        st.metric(
+            label = 'Total Cost in Credits:',
+            value = formatted_total_cost_credits
+        )
+    
+    ## Average cost in USD
+    with cost3:
+        st.metric(
+            label = 'Average Cost in USD:',
+            value = formatted_avg_cost_usd
+        )
+        
+    ## Average cost in credits
+    with cost4:
+        st.metric(
+            label = 'Average Cost in Credits:',
+            value = formatted_avg_cost_credits
+        )
+
+# Create remaining credits visual
+with overall_cost_tab2:
     st.metric(
-        label = 'Total Cost in Credits:',
-        value = formatted_total_cost_credits
+        label = 'Remaining redits in USD:',
+        value = formatted_remaining_credits_usd
     )
 
-## Average cost in USD
-with cost3:
-    st.metric(
-        label = 'Average Cost in USD:',
-        value = formatted_avg_cost_usd
-    )
-    
-## Average cost in credits
-with cost4:
-    st.metric(
-        label = 'Average Cost in Credits:',
-        value = formatted_avg_cost_credits
-    )
+st.write("\n")
 
 
 ##### 3. Graphs #####
