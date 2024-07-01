@@ -45,28 +45,7 @@ with filter4:
     )
 
 
-##### 2. Create Views #####
-
-# Query: Unique and duplicate count view
-if selected_db and selected_schema and selected_tb and selected_col:
-    uni_dup_cnt_view_query = '''
-        CREATE OR REPLACE VIEW {0}.{1}.{2}_{3}_UNIQUE_DUPLICATE_COUNT AS
-        SELECT
-          COUNT(DISTINCT {3}) AS UNIQUE_COUNT,
-          COUNT({3}) - COUNT(DISTINCT {3}) AS DUPLICATE_COUNT
-        FROM {0}.{1}.{2};
-    '''.format(
-        selected_db,
-        selected_schema,
-        selected_tb,
-        selected_col
-    )
-    
-    # Execute the query
-    session.sql(uni_dup_cnt_view_query).collect()
-
-
-##### 3. Data Qaulity Summary #####
+##### 2. Data Qaulity Summary #####
 
 st.divider()
 st.subheader('Column Overview')
@@ -74,7 +53,10 @@ st.subheader('Column Overview')
 # Query the unique and duplicate count view
 if selected_db and selected_schema and selected_tb and selected_col:
     uni_dup_cnt_select_query = '''
-        SELECT * FROM {0}.{1}.{2}_{3}_UNIQUE_DUPLICATE_COUNT;
+        SELECT
+          COUNT(DISTINCT {3}) AS UNIQUE_COUNT,
+          COUNT({3}) - COUNT(DISTINCT {3}) AS DUPLICATE_COUNT
+        FROM {0}.{1}.{2};
     '''.format(
         selected_db,
         selected_schema,
@@ -109,7 +91,7 @@ with dup_cnt:
     )
 
 
-##### 4. Load History #####
+##### 3. Load History #####
 
 st.divider()
 st.subheader('Table Load History')
