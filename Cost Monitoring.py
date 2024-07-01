@@ -68,7 +68,6 @@ with filter3:
 ##### 2. Overall Cost #####
 
 st.divider()
-st.write("\n")
 st.subheader('Overall Cost')
 
 # Quote each account name
@@ -187,15 +186,15 @@ with overall_cost_tab2:
         value = formatted_remaining_credits_usd
     )
 
-st.write("\n")
-
 
 ##### 3. Graphs #####
 
-### 3.1 Daily Cost ###
+### 3.1 Daily / Monthly Cost ###
 
-st.divider()
-st.subheader('Daily Cost')
+st.write('\n')
+st.write('\n')
+st.write('\n')
+st.subheader('Daily / Monthly Cost')
 
 # Daily cost query
 if quoted_selected_acc and quoted_selected_service:
@@ -253,8 +252,72 @@ fig_daily_cost.update_layout(
     }
 )
 
+# Monthly cost query
+if quoted_selected_acc and quoted_selected_service:
+    monthly_cost_query = '''
+        SELECT 
+            MONTH(USAGE_DATE) AS USAGE_MONTH,
+            SUM(USAGE_IN_CURRENCY) AS TOTAL_COST_USD
+        FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
+        WHERE ACCOUNT_NAME IN ({})
+        AND SERVICE_TYPE IN ({})
+        AND USAGE_DATE BETWEEN '{}' AND '{}'
+        GROUP BY USAGE_MONTH
+        ORDER BY USAGE_MONTH ASC
+    '''.format(
+        ', '.join(quoted_selected_acc),
+        ', '.join(quoted_selected_service),
+        start_date_str,
+        end_date_str
+    )
+else:
+    monthly_cost_query = '''
+        SELECT 
+            MONTH(USAGE_DATE) AS USAGE_MONTH,
+            0 AS TOTAL_COST_USD
+        FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
+        WHERE USAGE_DATE BETWEEN '{}' AND '{}'
+        GROUP BY USAGE_MONTH
+        ORDER BY USAGE_MONTH ASC
+    '''.format(
+        start_date_str,
+        end_date_str
+    )
+
+# Convert to DataFrame
+df_monthly_cost = session.sql(monthly_cost_query).to_pandas()
+
+# Create a Plotly bar chart
+fig_monthly_cost = px.bar(df_monthly_cost, x = 'USAGE_MONTH', y = 'TOTAL_COST_USD', 
+             labels = {'USAGE_MONTH': 'Usage Month', 'TOTAL_COST_USD': 'Total Cost (USD)'},
+             title = 'Monthly Cost in USD')
+
+fig_monthly_cost.update_layout(
+    xaxis_title = '',
+    yaxis_title = '',
+    xaxis_tickformat = '%Y-%m-%d',
+    bargap = 0.2,
+    width = 800,
+    height = 400,
+    title = {
+        'text': 'Monthly Cost in USD',
+        'y':0.9,
+        'x':0.5,
+        'xanchor': 'center',
+        'yanchor': 'top'
+    }
+)
+
+# Create tabs
+daily_cost_tab, monthly_cost_tab = st.tabs(["Daily Cost", "Monthly Cost"])
+
 # Display the Plotly chart in Streamlit
-st.plotly_chart(fig_daily_cost, use_container_width = True)
+with daily_cost_tab:
+    st.plotly_chart(fig_daily_cost, use_container_width = True)
+
+with monthly_cost_tab:
+    st.write("📣 Note: For the date range filter, select the entire month to view the full result.")
+    st.plotly_chart(fig_monthly_cost, use_container_width = True)
 
 
 ### 3.2 Cost by Account / Service Type ###
