@@ -127,11 +127,11 @@ formatted_avg_cost_usd = "${:,.2f}".format(avg_cost_usd)
 avg_cost_credits = df_cost['AVG_COST_CREDITS'].iloc[0]
 formatted_avg_cost_credits = "{:,.2f}".format(avg_cost_credits)
 
-# Remaining credits query (Note: Using FREE_USAGE_BALANCE instead of CAPACITY_BALANCE)
+# Remaining credits query 
 remaining_credits_query = '''
     SELECT 
         DATE, 
-        FREE_USAGE_BALANCE
+        FREE_USAGE_BALANCE + CAPACITY_BALANCE AS TOTAL_BALANCE
     FROM SNOWFLAKE.ORGANIZATION_USAGE.REMAINING_BALANCE_DAILY
     ORDER BY DATE DESC
     LIMIT 1;
@@ -141,11 +141,11 @@ remaining_credits_query = '''
 df_remaining_credits = session.sql(remaining_credits_query).to_pandas()
 
 # Extract remaining credits (USD)
-remaining_credits_usd = df_remaining_credits['FREE_USAGE_BALANCE'].iloc[0]
+remaining_credits_usd = df_remaining_credits['TOTAL_BALANCE'].iloc[0]
 formatted_remaining_credits_usd = "${:,.2f}".format(remaining_credits_usd)
 
 # Create tabs
-overall_cost_tab1, overall_cost_tab2 = st.tabs(["Cost", "Remaining Credits"])
+overall_cost_tab1, overall_cost_tab2 = st.tabs(["Overall Cost", "Remaining Credits"])
 
 # Create overall cost visual
 with overall_cost_tab1:
@@ -317,7 +317,7 @@ fig_monthly_cost.update_xaxes(
 )
 
 # Create tabs
-daily_cost_tab, monthly_cost_tab = st.tabs(["Daily Cost", "Monthly Cost"])
+daily_cost_tab, monthly_cost_tab = st.tabs(["Cost By Day", "Cost By Month"])
 
 # Display the Plotly chart in Streamlit
 with daily_cost_tab:
