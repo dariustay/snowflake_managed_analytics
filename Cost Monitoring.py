@@ -324,7 +324,7 @@ with daily_cost_tab:
     st.plotly_chart(fig_daily_cost, use_container_width = True)
 
 with monthly_cost_tab:
-    st.write("📣 Note: For the date range filter, select the entire month to view the full result.")
+    st.write("📣 Note: Select the entire month for the date range filter to view the full result.")
     st.plotly_chart(fig_monthly_cost, use_container_width = True)
 
 
