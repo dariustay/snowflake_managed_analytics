@@ -139,6 +139,11 @@ remaining_credits_query = '''
 
 # Convert to DataFrame
 df_remaining_credits = session.sql(remaining_credits_query).to_pandas()
+if df_remaining_credits.empty:
+    df_remaining_credits = pd.DataFrame({
+        'DATE': [default_end_date], 
+        'TOTAL_BALANCE': [0]
+    })
 
 # Extract remaining credits (USD)
 remaining_credits_usd = df_remaining_credits['TOTAL_BALANCE'].iloc[0]
