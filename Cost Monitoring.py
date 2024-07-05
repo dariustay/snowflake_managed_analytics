@@ -201,18 +201,20 @@ st.write('\n')
 st.write('\n')
 st.subheader('Daily / Monthly Cost')
 
-# Daily cost query
+# Daily cost table table (Note: This can be a temporary table, if needed)
 if quoted_selected_acc and quoted_selected_service:
-    daily_cost_query = '''
-        SELECT 
-            USAGE_DATE,
-            SUM(USAGE_IN_CURRENCY) AS TOTAL_COST_USD
-        FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
-        WHERE ACCOUNT_NAME IN ({})
-        AND SERVICE_TYPE IN ({})
-        AND USAGE_DATE BETWEEN '{}' AND '{}'
-        GROUP BY USAGE_DATE
-        ORDER BY USAGE_DATE ASC
+    daily_cost_table_query = '''
+        CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST AS (
+            SELECT 
+                USAGE_DATE,
+                SUM(USAGE_IN_CURRENCY) AS TOTAL_COST_USD
+            FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
+            WHERE ACCOUNT_NAME IN ({})
+            AND SERVICE_TYPE IN ({})
+            AND USAGE_DATE BETWEEN '{}' AND '{}'
+            GROUP BY USAGE_DATE
+            ORDER BY USAGE_DATE ASC
+        )
     '''.format(
         ', '.join(quoted_selected_acc),
         ', '.join(quoted_selected_service),
@@ -220,18 +222,28 @@ if quoted_selected_acc and quoted_selected_service:
         end_date_str
     )
 else:
-    daily_cost_query = '''
-        SELECT 
-            USAGE_DATE,
-            0 AS TOTAL_COST_USD
-        FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
-        WHERE USAGE_DATE BETWEEN '{}' AND '{}'
-        GROUP BY USAGE_DATE
-        ORDER BY USAGE_DATE ASC
+    daily_cost_table_query = '''
+        CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST AS (
+            SELECT 
+                USAGE_DATE,
+                0 AS TOTAL_COST_USD
+            FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
+            WHERE USAGE_DATE BETWEEN '{}' AND '{}'
+            GROUP BY USAGE_DATE
+            ORDER BY USAGE_DATE ASC
+        )
     '''.format(
         start_date_str,
         end_date_str
     )
+
+# Execute the query
+session.sql(daily_cost_table_query).collect()
+
+# Query the daily cost table
+daily_cost_query = '''
+    SELECT * FROM MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST;
+'''
 
 # Convert to DataFrame
 df_daily_cost = session.sql(daily_cost_query).to_pandas()
@@ -261,18 +273,20 @@ fig_daily_cost.update_xaxes(
     tickformat = '%Y-%m-%d'
 )
 
-# Monthly cost query
+# Monthly cost table table (Note: This can be a temporary table, if needed)
 if quoted_selected_acc and quoted_selected_service:
-    monthly_cost_query = '''
-        SELECT 
-            TO_CHAR(USAGE_DATE, 'YYYY-MM') AS USAGE_MONTH,
-            SUM(USAGE_IN_CURRENCY) AS TOTAL_COST_USD
-        FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
-        WHERE ACCOUNT_NAME IN ({})
-        AND SERVICE_TYPE IN ({})
-        AND USAGE_DATE BETWEEN '{}' AND '{}'
-        GROUP BY USAGE_MONTH
-        ORDER BY USAGE_MONTH ASC
+    monthly_cost_table_query = '''
+        CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_MONTHLY_COST AS (
+            SELECT 
+                TO_CHAR(USAGE_DATE, 'YYYY-MM') AS USAGE_MONTH,
+                SUM(USAGE_IN_CURRENCY) AS TOTAL_COST_USD
+            FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
+            WHERE ACCOUNT_NAME IN ({})
+            AND SERVICE_TYPE IN ({})
+            AND USAGE_DATE BETWEEN '{}' AND '{}'
+            GROUP BY USAGE_MONTH
+            ORDER BY USAGE_MONTH ASC
+        )
     '''.format(
         ', '.join(quoted_selected_acc),
         ', '.join(quoted_selected_service),
@@ -280,18 +294,28 @@ if quoted_selected_acc and quoted_selected_service:
         end_date_str
     )
 else:
-    monthly_cost_query = '''
-        SELECT 
-           TO_CHAR(USAGE_DATE, 'YYYY-MM') AS USAGE_MONTH,
-            0 AS TOTAL_COST_USD
-        FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
-        WHERE USAGE_DATE BETWEEN '{}' AND '{}'
-        GROUP BY USAGE_MONTH
-        ORDER BY USAGE_MONTH ASC
+    monthly_cost_table_query = '''
+        CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_MONTHLY_COST AS (
+            SELECT
+                TO_CHAR(USAGE_DATE, 'YYYY-MM') AS USAGE_MONTH,
+                0 AS TOTAL_COST_USD
+            FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
+            WHERE USAGE_DATE BETWEEN '{}' AND '{}'
+            GROUP BY USAGE_MONTH
+            ORDER BY USAGE_MONTH ASC
+        )
     '''.format(
         start_date_str,
         end_date_str
     )
+
+# Execute the query
+session.sql(monthly_cost_table_query).collect()
+
+# Query the daily cost table
+monthly_cost_query = '''
+    SELECT * FROM MANAGED_ANALYTICS.STREAMLIT_APP.ORG_MONTHLY_COST;
+'''
 
 # Convert to DataFrame
 df_monthly_cost = session.sql(monthly_cost_query).to_pandas()
