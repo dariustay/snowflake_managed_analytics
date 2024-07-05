@@ -173,21 +173,21 @@ with overall_cost_tab1:
     ## Average cost in USD
     with cost3:
         st.metric(
-            label = 'Average Cost in USD:',
+            label = 'Avg Daily Cost in USD:',
             value = formatted_avg_cost_usd
         )
         
     ## Average cost in credits
     with cost4:
         st.metric(
-            label = 'Average Cost in Credits:',
+            label = 'Avg Daily Cost in Credits:',
             value = formatted_avg_cost_credits
         )
 
 # Create remaining credits visual
 with overall_cost_tab2:
     st.metric(
-        label = 'Remaining redits in USD:',
+        label = 'Remaining Credits in USD:',
         value = formatted_remaining_credits_usd
     )
 
