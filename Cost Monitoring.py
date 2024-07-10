@@ -201,7 +201,7 @@ st.write('\n')
 st.write('\n')
 st.subheader('Daily / Monthly Cost')
 
-# Daily cost table table (Note: This can be a temporary table, if needed)
+# Daily cost table table
 if quoted_selected_acc and quoted_selected_service:
     daily_cost_table_query = '''
         CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST AS (
@@ -273,7 +273,7 @@ fig_daily_cost.update_xaxes(
     tickformat = '%Y-%m-%d'
 )
 
-# Monthly cost table table (Note: This can be a temporary table, if needed)
+# Monthly cost table table
 if quoted_selected_acc and quoted_selected_service:
     monthly_cost_table_query = '''
         CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_MONTHLY_COST AS (
