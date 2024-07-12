@@ -56,7 +56,7 @@ if selected_db and selected_schema and selected_tb and selected_col:
         SELECT
           COUNT(DISTINCT {3}) AS UNIQUE_COUNT,
           COUNT({3}) - COUNT(DISTINCT {3}) AS DUPLICATE_COUNT
-        FROM {0}.{1}.{2};
+        FROM {0}.{1}.{2}
     '''.format(
         selected_db,
         selected_schema,
