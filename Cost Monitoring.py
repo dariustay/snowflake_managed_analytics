@@ -134,7 +134,7 @@ remaining_credits_query = '''
         FREE_USAGE_BALANCE + CAPACITY_BALANCE AS TOTAL_BALANCE
     FROM SNOWFLAKE.ORGANIZATION_USAGE.REMAINING_BALANCE_DAILY
     ORDER BY DATE DESC
-    LIMIT 1;
+    LIMIT 1
 '''
 
 # Convert to DataFrame
@@ -201,59 +201,103 @@ st.write('\n')
 st.write('\n')
 st.subheader('Daily / Monthly Cost')
 
-# Daily cost table table
+# Daily cost table query (for forecast model training)
 if quoted_selected_acc and quoted_selected_service:
-    daily_cost_table_query = '''
-        CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST AS (
+    daily_cost_table_train_query = '''
+        CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_TRAIN AS (
             SELECT 
-                USAGE_DATE,
+                TO_TIMESTAMP_NTZ(USAGE_DATE) AS USAGE_DATE,
                 SUM(USAGE_IN_CURRENCY) AS TOTAL_COST_USD
             FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
             WHERE ACCOUNT_NAME IN ({})
             AND SERVICE_TYPE IN ({})
-            AND USAGE_DATE BETWEEN '{}' AND '{}'
             GROUP BY USAGE_DATE
             ORDER BY USAGE_DATE ASC
         )
     '''.format(
         ', '.join(quoted_selected_acc),
-        ', '.join(quoted_selected_service),
-        start_date_str,
-        end_date_str
+        ', '.join(quoted_selected_service)
     )
 else:
-    daily_cost_table_query = '''
-        CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST AS (
+    daily_cost_table_train_query = '''
+        CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_TRAIN AS (
             SELECT 
-                USAGE_DATE,
+                TO_TIMESTAMP_NTZ(USAGE_DATE) AS USAGE_DATE,
                 0 AS TOTAL_COST_USD
-            FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY 
-            WHERE USAGE_DATE BETWEEN '{}' AND '{}'
+            FROM SNOWFLAKE.ORGANIZATION_USAGE.USAGE_IN_CURRENCY_DAILY
             GROUP BY USAGE_DATE
             ORDER BY USAGE_DATE ASC
         )
-    '''.format(
-        start_date_str,
-        end_date_str
-    )
+    '''
 
 # Execute the query
-session.sql(daily_cost_table_query).collect()
+session.sql(daily_cost_table_train_query).collect()
 
-# Query the daily cost table
-daily_cost_query = '''
-    SELECT * FROM MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST;
+# Daily cost table to be displayed based on data range
+daily_cost_display_query = '''
+    CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_DISPLAY AS (
+        SELECT * 
+        FROM MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_TRAIN
+        WHERE USAGE_DATE BETWEEN '{}' AND '{}'
+    )
+'''.format(
+    start_date_str,
+    end_date_str
+)
+
+# Execute the query
+session.sql(daily_cost_display_query).collect()
+
+# Forecast model and predictions table queries
+create_forecast_query = '''
+    CREATE OR REPLACE SNOWFLAKE.ML.FORECAST MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_FORECAST (
+        INPUT_DATA => TABLE(MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_TRAIN),
+        TIMESTAMP_COLNAME => 'USAGE_DATE',
+        TARGET_COLNAME => 'TOTAL_COST_USD'
+    )
+'''
+
+call_forecast_query = '''
+    CALL MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_FORECAST!FORECAST(FORECASTING_PERIODS => 7)
+'''
+
+create_predictions_query = '''
+    CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_PREDICTIONS AS (
+        SELECT *
+        FROM TABLE(RESULT_SCAN(-1))
+    )
+'''
+
+# Execute the queries 
+session.sql(create_forecast_query).collect()
+session.sql(call_forecast_query).collect()
+session.sql(create_predictions_query).collect()
+
+# Query to combine the daily cost combined tables
+daily_cost_combined_query = '''
+    SELECT
+        USAGE_DATE,
+        TOTAL_COST_USD,
+        'Actual' AS DATA_TYPE
+    FROM MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_DISPLAY
+    UNION
+    SELECT
+        TS AS USAGE_DATE,
+        FORECAST AS TOTAL_COST_USD,
+        'Forecast' AS DATA_TYPE
+    FROM MANAGED_ANALYTICS.STREAMLIT_APP.ORG_DAILY_COST_PREDICTIONS
+    ORDER BY USAGE_DATE ASC
 '''
 
 # Convert to DataFrame
-df_daily_cost = session.sql(daily_cost_query).to_pandas()
+df_daily_cost_combined = session.sql(daily_cost_combined_query).to_pandas()
 
 # Create a Plotly bar chart
-fig_daily_cost = px.bar(df_daily_cost, x = 'USAGE_DATE', y = 'TOTAL_COST_USD', 
-             labels = {'USAGE_DATE': 'Usage Date', 'TOTAL_COST_USD': 'Total Cost (USD)'},
-             title = 'Daily Cost in USD')
+fig_daily_cost_combined = px.bar(df_daily_cost_combined, x = 'USAGE_DATE', y = 'TOTAL_COST_USD', color = 'DATA_TYPE', 
+                    labels = {'USAGE_DATE': 'Usage Date', 'TOTAL_COST_USD': 'Total Cost (USD)', 'DATA_TYPE': 'Data Type'},
+                    title = 'Daily Cost in USD',  color_discrete_map = {'Forecast': '#FFD700'})
 
-fig_daily_cost.update_layout(
+fig_daily_cost_combined.update_layout(
     xaxis_title = '',
     yaxis_title = '',
     bargap = 0.2,
@@ -261,19 +305,19 @@ fig_daily_cost.update_layout(
     height = 400,
     title = {
         'text': 'Daily Cost in USD',
-        'y':0.9,
-        'x':0.5,
+        'y': 0.9,
+        'x': 0.5,
         'xanchor': 'center',
         'yanchor': 'top'
     }
 )
 
-fig_daily_cost.update_xaxes(
+fig_daily_cost_combined.update_xaxes(
     dtick = "D1",
     tickformat = '%Y-%m-%d'
 )
 
-# Monthly cost table table
+# Monthly cost table query
 if quoted_selected_acc and quoted_selected_service:
     monthly_cost_table_query = '''
         CREATE OR REPLACE TABLE MANAGED_ANALYTICS.STREAMLIT_APP.ORG_MONTHLY_COST AS (
@@ -314,7 +358,7 @@ session.sql(monthly_cost_table_query).collect()
 
 # Query the daily cost table
 monthly_cost_query = '''
-    SELECT * FROM MANAGED_ANALYTICS.STREAMLIT_APP.ORG_MONTHLY_COST;
+    SELECT * FROM MANAGED_ANALYTICS.STREAMLIT_APP.ORG_MONTHLY_COST
 '''
 
 # Convert to DataFrame
@@ -350,7 +394,7 @@ daily_cost_tab, monthly_cost_tab = st.tabs(["Cost By Day", "Cost By Month"])
 
 # Display the Plotly chart in Streamlit
 with daily_cost_tab:
-    st.plotly_chart(fig_daily_cost, use_container_width = True)
+    st.plotly_chart(fig_daily_cost_combined, use_container_width = True)
 
 with monthly_cost_tab:
     st.write("📣 Note: Select the entire month for the date range filter to view the full result.")
