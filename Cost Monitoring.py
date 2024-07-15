@@ -1,6 +1,7 @@
 ##### 0. Setup #####
 
 # Import packages
+import pytz
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -25,7 +26,8 @@ df_acc = session.sql(acc_query).to_pandas()
 acc_list = sorted(df_acc['ACCOUNT_NAME'].tolist())
 
 # Define default date range (i.e., previous 1 week)
-default_end_date = datetime.today().date()
+sg_timezone = pytz.timezone('Asia/Singapore')
+default_end_date = datetime.now(sg_timezone).date()
 default_start_date = default_end_date - timedelta(days = 7)
 
 # Service types query
