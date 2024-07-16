@@ -392,7 +392,7 @@ fig_monthly_cost.update_xaxes(
 )
 
 # Create tabs
-daily_cost_tab, monthly_cost_tab = st.tabs(["Cost By Day", "Cost By Month"])
+daily_cost_tab, monthly_cost_tab = st.tabs(["Cost by Day", "Cost by Month"])
 
 # Display the Plotly chart in Streamlit
 with daily_cost_tab:
