@@ -14,7 +14,7 @@ st.write("\n\n")
 ##### 1. Filters #####
 
 # Create filters
-filter1, filter2, filter3, filter4 = st.columns(4)
+filter1, filter2, filter3 = st.columns(3)
 
 ## Database
 with filter1:
@@ -37,13 +37,6 @@ with filter3:
         value = 'TRUCK'
     )
 
-## Column
-with filter4:
-    selected_col = st.text_input(
-        label = 'Insert Column:',
-        value = 'TRUCK_ID'
-    )
-
 
 ##### 2. Data Qaulity Summary #####
 
@@ -51,18 +44,27 @@ st.divider()
 st.subheader('Column Overview')
 
 # Query the unique and duplicate count view
-if selected_db and selected_schema and selected_tb and selected_col:
+if selected_db and selected_schema and selected_tb:
+    col_names_query = '''
+        SELECT COLUMN_NAME 
+        FROM {0}.INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_CATALOG = '{0}' 
+        AND TABLE_SCHEMA = '{1}' 
+        AND TABLE_NAME = '{2}'
+    '''.format(selected_db, selected_schema, selected_tb)
+    
+    df_col_names = session.sql(col_names_query).to_pandas()
+    col_names = df_col_names['COLUMN_NAME'].tolist()
+    
+    # Create query to check for duplicates based on concatenated columns
+    concat_cols = " || ".join(col_names)
+    
     uni_dup_cnt_select_query = '''
         SELECT
-          COUNT(DISTINCT {3}) AS UNIQUE_COUNT,
-          COUNT({3}) - COUNT(DISTINCT {3}) AS DUPLICATE_COUNT
-        FROM {0}.{1}.{2}
-    '''.format(
-        selected_db,
-        selected_schema,
-        selected_tb,
-        selected_col
-    )
+          COUNT(DISTINCT {0}) AS UNIQUE_COUNT,
+          COUNT(*) - COUNT(DISTINCT {0}) AS DUPLICATE_COUNT
+        FROM {1}.{2}.{3}
+    '''.format(concat_cols, selected_db, selected_schema, selected_tb)
 else:
     uni_dup_cnt_select_query = '''
         SELECT
@@ -79,16 +81,31 @@ uni_cnt, dup_cnt = st.columns(2)
 ## Total cost in USD
 with uni_cnt:
     st.metric(
-        label = 'No. of Unqiue Rows:',
-        value = df_uni_dup_cnt['UNIQUE_COUNT']
+        label = 'No. of Unqiue Records:',
+        value = df_uni_dup_cnt['UNIQUE_COUNT'][0]
     )
     
 ## Total cost in credits
 with dup_cnt:
     st.metric(
-        label = 'No. of Duplicate Rows:',
-        value = df_uni_dup_cnt['DUPLICATE_COUNT']
+        label = 'No. of Duplicate Records:',
+        value = df_uni_dup_cnt['DUPLICATE_COUNT'][0]
     )
+
+# Query to get duplicated records
+if selected_db and selected_schema and selected_tb:
+    dup_records_query = '''
+        SELECT *
+        FROM {0}.{1}.{2}
+        QUALIFY ROW_NUMBER() OVER(PARTITION BY {3} ORDER BY {3}) > 1
+    '''.format(selected_db, selected_schema, selected_tb, concat_cols)
+
+    df_dup_records = session.sql(dup_records_query).to_pandas()
+
+    # Display duplicated records if any
+    if not df_dup_records.empty:
+        st.write('\n')
+        st.dataframe(df_dup_records.sort_values(by = col_names), use_container_width = True)
 
 
 ##### 3. Load History #####
@@ -107,7 +124,7 @@ if selected_db and selected_schema and selected_tb:
             TABLE_ID,
             TABLE_NAME,
             FILE_NAME,
-            LAST_LOAD_TIME,
+            TO_CHAR(LAST_LOAD_TIME, 'YYYY-MM-DD') AS LAST_LOAD_TIME,
             STATUS,
             ROW_COUNT,
             ROW_PARSED
@@ -149,7 +166,6 @@ fig_load_hist_success = px.bar(df_load_hist_success, x = 'LAST_LOAD_TIME', y = '
 fig_load_hist_success.update_layout(
     xaxis_title = '',
     yaxis_title = 'No. of Rows Loaded',
-    xaxis_tickformat = '%Y-%m-%d',
     bargap = 0.2,
     width = 800,
     height = 400,
@@ -160,6 +176,11 @@ fig_load_hist_success.update_layout(
         'xanchor': 'center',
         'yanchor': 'top'
     }
+)
+
+fig_load_hist_success.update_xaxes(
+    dtick = "D1",
+    tickformat = '%Y-%m-%d'
 )
 
 # Display the Plotly chart in Streamlit
