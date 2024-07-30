@@ -504,7 +504,7 @@ with pie2:
 st.subheader('Top Cost by Account & Service Type')
 st.write("\n\n")
 
-# Cost by account AND service typequery
+# Cost by account AND service type query
 if quoted_selected_acc and quoted_selected_service:
     cost_acc_service_query = '''
         SELECT 
