@@ -61,6 +61,7 @@ if selected_db and selected_schema and selected_tb:
     
     uni_dup_cnt_select_query = '''
         SELECT
+          COUNT(*) AS TOTAL_COUNT,
           COUNT(DISTINCT {0}) AS UNIQUE_COUNT,
           COUNT(*) - COUNT(DISTINCT {0}) AS DUPLICATE_COUNT
         FROM {1}.{2}.{3}
@@ -68,6 +69,7 @@ if selected_db and selected_schema and selected_tb:
 else:
     uni_dup_cnt_select_query = '''
         SELECT
+          0 AS TOTAL_COUNT,
           0 AS UNIQUE_COUNT,
           0 AS DUPLICATE_COUNT
     '''
@@ -76,19 +78,26 @@ else:
 df_uni_dup_cnt = session.sql(uni_dup_cnt_select_query).to_pandas()
 
 # Create data quality summary visual
-uni_cnt, dup_cnt = st.columns(2)
+total_cnt, uni_cnt, dup_cnt = st.columns(3)
 
-## Total cost in USD
+## Total no. of rows
+with total_cnt:
+    st.metric(
+        label = 'Total No. of Rows:',
+        value = df_uni_dup_cnt['TOTAL_COUNT'][0]
+    )
+
+## No. of unique rows
 with uni_cnt:
     st.metric(
-        label = 'No. of Unqiue Records:',
+        label = 'No. of Unqiue Rows:',
         value = df_uni_dup_cnt['UNIQUE_COUNT'][0]
     )
     
-## Total cost in credits
+## No. of duplicate rows
 with dup_cnt:
     st.metric(
-        label = 'No. of Duplicate Records:',
+        label = 'No. of Duplicate Rows:',
         value = df_uni_dup_cnt['DUPLICATE_COUNT'][0]
     )
 
@@ -104,7 +113,6 @@ if selected_db and selected_schema and selected_tb:
 
     # Display duplicated records if any
     if not df_dup_records.empty:
-        st.write('\n')
         st.dataframe(df_dup_records.sort_values(by = col_names), use_container_width = True)
 
 
