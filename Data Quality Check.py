@@ -90,7 +90,7 @@ with total_cnt:
 ## No. of unique rows
 with uni_cnt:
     st.metric(
-        label = 'No. of Unqiue Rows:',
+        label = 'No. of Unique Rows:',
         value = df_uni_dup_cnt['UNIQUE_COUNT'][0]
     )
     
