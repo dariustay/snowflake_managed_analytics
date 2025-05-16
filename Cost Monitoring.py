@@ -294,6 +294,9 @@ daily_cost_combined_query = '''
 # Convert to DataFrame
 df_daily_cost_combined = session.sql(daily_cost_combined_query).to_pandas()
 
+# Clip / Zero out negative predictions
+df_daily_cost_combined['TOTAL_COST_USD'] = df_daily_cost_combined['TOTAL_COST_USD'].clip(lower = 0)
+
 # Create a Plotly bar chart
 fig_daily_cost_combined = px.bar(df_daily_cost_combined, x = 'USAGE_DATE', y = 'TOTAL_COST_USD', color = 'DATA_TYPE', 
                     labels = {'USAGE_DATE': 'Usage Date', 'TOTAL_COST_USD': 'Total Cost (USD)', 'DATA_TYPE': 'Data Type'},
